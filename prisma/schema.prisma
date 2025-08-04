@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model documents_project {
+  id                           BigInt    @id @default(autoincrement())
+  date_time                    DateTime? @db.Timestamp(6)
+  description_document_project String    @db.VarChar(1000)
+  document_document_project    String    @db.VarChar(255)
+  id_project                   BigInt
+  title_document_project       String    @db.VarChar(255)
+  project                      project   @relation(fields: [id_project], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_documents_project")
+
+  @@index([id_project], map: "fki_fk_documents_project")
+}
+
+model documents_user {
+  id                        BigInt    @id @default(autoincrement())
+  date_time                 DateTime? @db.Timestamp(6)
+  description_document_user String    @db.VarChar(1000)
+  document_document_user    String    @db.VarChar(255)
+  id_user                   BigInt
+  title_document_user       String    @db.VarChar(255)
+  users                     users     @relation(fields: [id_user], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_documents_user")
+
+  @@index([id_user], map: "fki_fk_documents_user")
+}
+
+model link_project {
+  id                       BigInt  @id @default(autoincrement())
+  description_link_project String  @db.VarChar(1000)
+  id_project               BigInt
+  link_link_project        String  @db.VarChar(255)
+  title_link_project       String  @db.VarChar(255)
+  project                  project @relation(fields: [id_project], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_link_project")
+
+  @@index([id_project], map: "fki_fk_link_project")
+}
+
+model log {
+  id         BigInt   @id @default(autoincrement())
+  action     String   @db.VarChar(255)
+  controller String   @db.VarChar(255)
+  date_time  DateTime @db.Timestamp(6)
+  details    String
+  id_project String?  @db.VarChar(255)
+  id_user    String?  @db.VarChar(255)
+}
+
+model member_project {
+  id                         BigInt  @id @default(autoincrement())
+  id_project                 BigInt
+  id_supervisor              BigInt
+  id_user                    BigInt
+  permissions_member_project Int[]
+  role_member_project        String  @db.VarChar(255)
+  scholarship_member_project Decimal @db.Decimal(38, 2)
+  project                    project @relation(fields: [id_project], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_member_project")
+  users                      users   @relation(fields: [id_user], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_member_user")
+
+  sentMessages     message[] @relation("SenderProjectMessages")
+  receivedMessages message[] @relation("ReceiverProjectMessages")
+  
+  @@index([id_project], map: "fki_fk_member_project")
+  @@index([id_user], map: "fki_fk_member_user")
+  @@index([id_project], map: "idx_member_project_project")
+  @@index([id_user], map: "idx_member_project_user")
+}
+
+model project {
+  id                          BigInt              @id @default(autoincrement())
+  description_project         String              @db.VarChar(1000)
+  duration_project            Int
+  expected_final_date_project DateTime            @db.Date
+  final_date_project          DateTime?           @db.Date
+  name_project                String              @db.VarChar(255)
+  start_date_project          DateTime            @db.Date
+  value_project               Decimal             @db.Decimal(10, 2)
+  status_manual_project       String?             @db.VarChar(255)
+  documents_project           documents_project[]
+  link_project                link_project[]
+  member_project              member_project[]
+  resources_project           resources_project[]
+
+  messages message[] @relation("ProjectMessages")
+}
+
+model resources {
+  id                        BigInt              @id @default(autoincrement())
+  aquisition_date_resources DateTime            @db.Date
+  description_resources     String              @db.VarChar(10000)
+  estimated_value_resources Decimal             @db.Decimal(10, 2)
+  name_resources            String              @db.VarChar(255)
+  origin_resources          String              @db.VarChar(255)
+  status_resources          String              @db.VarChar(255)
+  type_resources            String              @db.VarChar(255)
+  resources_project         resources_project[]
+  resources_user            resources_user[]
+}
+
+model resources_project {
+  id          BigInt    @id @default(autoincrement())
+  id_project  BigInt
+  id_resource BigInt
+  project     project   @relation(fields: [id_project], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_resources_project")
+  resources   resources @relation(fields: [id_resource], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_resources_resource")
+
+  @@index([id_project], map: "fki_fk_resources_project")
+  @@index([id_resource], map: "fki_fk_resources_resource")
+}
+
+model resources_user {
+  id          BigInt    @id @default(autoincrement())
+  id_resource BigInt
+  id_user     BigInt
+  resources   resources @relation(fields: [id_resource], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_resources_resource")
+  users       users     @relation(fields: [id_user], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_resources_user")
+
+  @@index([id_user], map: "fki_fk_resources_user")
+}
+
+model users {
+  id                      BigInt           @id @default(autoincrement())
+  complementary_data_user String?
+  cpf_user                String           @unique(map: "uk_pif4d6qouwvnmkn859ctq7n7f") @db.VarChar(14)
+  email_user              String           @unique(map: "uk_sgpbvva83aaeroqfb77028a38") @db.VarChar(255)
+  name_user               String           @db.VarChar(255)
+  password_user           String           @db.VarChar(255)
+  phone_user              String           @db.VarChar(15)
+  photo_user              String?          @db.VarChar(255)
+  status_user             Int
+  type_user               Int
+  documents_user          documents_user[]
+  member_project          member_project[]
+  resources_user          resources_user[]
+  
+  sentMessages     message[] @relation("UserSentMessages")
+  receivedMessages message[] @relation("vvReceiverMessages")
+}
+
+model message {
+  id                         BigInt      @id @default(autoincrement())
+  content                    String
+  created_at                 DateTime    @default(now())
+
+  // Agora opcionais
+  sender_member_project_id   BigInt?     
+  receiver_member_project_id BigInt?
+  id_project                 BigInt?
+
+  // Novos campos para mensagens privadas
+  sender_user_id             BigInt?
+  receiver_user_id           BigInt?
+
+  sender   member_project?   @relation("SenderProjectMessages", fields: [sender_member_project_id], references: [id], onDelete: Cascade)
+  receiver member_project?   @relation("ReceiverProjectMessages", fields: [receiver_member_project_id], references: [id], onDelete: SetNull)
+  project  project?          @relation("ProjectMessages", fields: [id_project], references: [id], onDelete: Cascade)
+
+  // Relations for user sender/receiver (opcional)
+  sender_user   users?       @relation("UserSentMessages", fields: [sender_user_id], references: [id], onDelete: SetNull)
+  receiver_user users?       @relation("vvReceiverMessages", fields: [receiver_user_id], references: [id], onDelete: SetNull)
+
+  @@index([sender_member_project_id])
+  @@index([receiver_member_project_id])
+  @@index([id_project])
+  @@index([sender_user_id])
+  @@index([receiver_user_id])
+  @@map("message")
+}
