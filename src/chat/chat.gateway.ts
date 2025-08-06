@@ -26,6 +26,7 @@ export class ChatGateway {
     @MessageBody() data: { projectId: string },
     @ConnectedSocket() client: Socket,
   ) {
+    console.log(`Socket ${client.id} joining room: ${data.projectId}`);
     client.join(data.projectId);
   }
 

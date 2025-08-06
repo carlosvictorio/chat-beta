@@ -20,6 +20,7 @@ export class ChatService {
       (p): ProjectDto => ({
         id: Number(p.project.id),
         name: p.project.name_project,
+        senderMemberProjectId: Number(p.id),
       }),
     );
 
@@ -66,11 +67,18 @@ export class ChatService {
   }
 
   async saveGroupMessage(dto: SendGroupMessageDto) {
+    console.log('💡 DTO recebido em saveGroupMessage:', dto);
     return await this.prisma.message.create({
       data: {
         content: dto.content,
         sender_member_project_id: Number(dto.senderMemberProjectId),
         id_project: Number(dto.projectId),
+      },
+      select: {
+        id: true,
+        content: true,
+        sender_member_project_id: true,
+        created_at: true,
       },
     });
   }
