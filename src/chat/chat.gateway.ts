@@ -60,17 +60,17 @@ export class ChatGateway {
 
     // Nome da sala privada
     const room = this.getPrivateRoomName(
-      Number(dto.sender_user_id),
-      Number(dto.receiver_user_id),
+      Number(dto.senderUserId),
+      Number(dto.receiverUserId),
     );
 
     // Emitir para ambos os usuários na sala
     this.server.to(room).emit('newPrivateMessage', {
       id: Number(savedMessage.id),
       content: savedMessage.content,
-      sender_user_id: Number(savedMessage.sender_user_id),
-      receiver_user_id: Number(savedMessage.receiver_user_id),
-      created_at: Number(savedMessage.created_at),
+      senderUserId: Number(savedMessage.sender_user_id),
+      receiverUserId: Number(savedMessage.receiver_user_id),
+      createdAt: savedMessage.created_at,
     });
   }
 

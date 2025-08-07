@@ -67,7 +67,7 @@ export class ChatService {
   }
 
   async saveGroupMessage(dto: SendGroupMessageDto) {
-    console.log('💡 DTO recebido em saveGroupMessage:', dto);
+    //console.log('💡 DTO recebido em saveGroupMessage:', dto);
     return await this.prisma.message.create({
       data: {
         content: dto.content,
@@ -84,11 +84,12 @@ export class ChatService {
   }
 
   async savePrivateMessage(dto: SendPrivateMessageDto) {
+    //console.log('💡 DTO recebido em savePrivateMessage:', dto);
     return await this.prisma.message.create({
       data: {
         content: dto.content,
-        sender_user_id: Number(dto.sender_user_id),
-        receiver_user_id: Number(dto.receiver_user_id),
+        sender_user_id: Number(dto.senderUserId),
+        receiver_user_id: Number(dto.receiverUserId),
       },
     });
   }
