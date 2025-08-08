@@ -85,6 +85,31 @@ export class ChatGateway {
     });
   }
 
+  @SubscribeMessage('getConversations')
+  async handleGetConversations(
+    @MessageBody() data: { userId: number },
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      // Buscar as conversas do usuário no serviço
+      const conversations = await this.chatService.getUserConversations(
+        `${data.userId}`,
+      );
+
+      // Enviar as conversas de volta para o cliente que solicitou
+      client.emit('conversationsList', {
+        status: 'success',
+        data: conversations,
+      });
+    } catch (error) {
+      client.emit('error', {
+        status: 'error',
+        message: 'Failed to fetch conversations',
+      });
+      console.error('Error fetching conversations:', error);
+    }
+  }
+
   private getPrivateRoomName(userId1: number, userId2: number): string {
     const sorted = [userId1, userId2].sort((a, b) => a - b);
     return `private_${sorted[0]}_${sorted[1]}`;

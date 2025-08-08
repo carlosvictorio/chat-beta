@@ -3,7 +3,16 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors();
+
+  (BigInt.prototype as any).toJSON = function () {
+    return Number(this);
+  };
+
+  app.enableCors({
+    origin: 'http://localhost:7155',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+  });
   await app.listen(3001);
 }
 bootstrap();

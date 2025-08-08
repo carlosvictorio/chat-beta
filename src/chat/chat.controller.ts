@@ -1,5 +1,7 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ChatService } from './chat.service';
+import { SendGroupMessageDto } from './dto/send-group-message.dto';
+import { SendPrivateMessageDto } from './dto/send-private-message.dto';
 
 @Controller('chat')
 export class ChatContoller {
@@ -12,7 +14,9 @@ export class ChatContoller {
 
   @Get('user-contacts/:id')
   async getContactsByUserId(@Param('id') id: string) {
-    return await this.chatService.getContactsByUser(id);
+    //return await this.chatService.getContactsByUser(id);
+
+    return await this.chatService.getUserConversations(id);
   }
 
   @Get('messages/private')
@@ -35,5 +39,15 @@ export class ChatContoller {
     if (messages.length === 0) return 'Sem mensagens';
 
     return messages;
+  }
+
+  @Post('messages/group')
+  async postGroupMessage(@Body() body: SendGroupMessageDto) {
+    return await this.chatService.saveGroupMessage(body);
+  }
+
+  @Post('messages/private')
+  async postPrivateMessage(@Body() body: SendPrivateMessageDto) {
+    return await this.chatService.savePrivateMessage(body);
   }
 }

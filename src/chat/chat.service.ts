@@ -3,6 +3,7 @@ import { PrismaService } from 'prisma/prisma.service';
 import { ProjectDto } from './dto/project.dto';
 import { SendGroupMessageDto } from './dto/send-group-message.dto';
 import { SendPrivateMessageDto } from './dto/send-private-message.dto';
+import { ConversationsDTO } from './dto/conversations.dto';
 
 @Injectable()
 export class ChatService {
@@ -113,15 +114,20 @@ export class ChatService {
       },
     });
 
-    return messages.map((m) => ({
-      ...m,
-      id: Number(m.id),
-      sender_member_project_id: Number(m.sender_member_project_id),
-      receiver_member_project_id: Number(m.receiver_member_project_id),
-      id_project: Number(m.id_project),
-      sender_user_id: Number(m.sender_user_id),
-      receiver_user_id: Number(m.receiver_user_id),
-    }));
+    return messages
+      .sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      )
+      .map((m) => ({
+        ...m,
+        id: Number(m.id),
+        sender_member_project_id: Number(m.sender_member_project_id),
+        receiver_member_project_id: Number(m.receiver_member_project_id),
+        id_project: Number(m.id_project),
+        sender_user_id: Number(m.sender_user_id),
+        receiver_user_id: Number(m.receiver_user_id),
+      }));
   }
 
   async getGroupMessages(projectId: number) {
@@ -140,10 +146,95 @@ export class ChatService {
       },
     });
 
-    return messages.map((m) => ({
-      ...m,
-      id: Number(m.id),
-      sender_member_project_id: Number(m.sender_member_project_id),
-    }));
+    return messages
+      .sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      )
+      .map((m) => ({
+        ...m,
+        id: Number(m.id),
+        sender_member_project_id: Number(m.sender_member_project_id),
+      }));
+  }
+
+  async getUserByMember(memberId?: number) {
+    if (!memberId) return;
+    const member = await this.prisma.member_project.findFirstOrThrow({
+      where: {
+        id: Number(memberId),
+      },
+      include: {
+        users: true,
+      },
+    });
+    return member?.users;
+  }
+
+  async getUserConversations(userId: string) {
+    const idBigInt = BigInt(userId);
+
+    const projects = await this.prisma.member_project.findMany({
+      where: { id_user: idBigInt },
+      include: { project: true },
+    });
+
+    const users = await this.getContactsByUser(userId);
+
+    const projectConversations: ConversationsDTO[] = await Promise.all(
+      projects.map(async (project) => {
+        const groupMessages = await this.getGroupMessages(
+          Number(project.project.id),
+        );
+        const lastGroupMessage = groupMessages[groupMessages.length - 1];
+
+        const user = await this.getUserByMember(
+          lastGroupMessage?.sender_member_project_id,
+        );
+
+        return {
+          isGroup: true,
+          lastMessage: lastGroupMessage?.content,
+          lastMessageDate: lastGroupMessage?.created_at,
+          lastMessageIdUser: user?.id ? Number(user?.id) : null,
+          name: project.project.name_project,
+          photoUrl: null,
+        };
+      }),
+    );
+
+    const privateConversations: ConversationsDTO[] = await Promise.all(
+      users.map(async (user) => {
+        const privateMessages = await this.getPrivateMessages(
+          Number(userId),
+          user.id,
+        );
+        const lastPrivateMessages = privateMessages[privateMessages.length - 1];
+
+        return {
+          isGroup: false,
+          lastMessage: lastPrivateMessages?.content,
+          lastMessageDate: lastPrivateMessages?.created_at,
+          lastMessageIdUser: lastPrivateMessages?.sender_user_id,
+          name: user.name_user,
+          photoUrl: user.photo_user,
+        };
+      }),
+    );
+
+    const allConversations: ConversationsDTO[] = [
+      ...projectConversations,
+      ...privateConversations,
+    ];
+
+    return allConversations.sort((a, b) => {
+      const dateA = a.lastMessageDate
+        ? new Date(a.lastMessageDate).getTime()
+        : 0;
+      const dateB = b.lastMessageDate
+        ? new Date(b.lastMessageDate).getTime()
+        : 0;
+      return dateB - dateA;
+    });
   }
 }
