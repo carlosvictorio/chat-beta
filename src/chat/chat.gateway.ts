@@ -43,9 +43,9 @@ export class ChatGateway {
     const savedMessage = await this.chatService.saveGroupMessage(dto);
 
     this.server.to(dto.projectId.toString()).emit('newMessage', {
-      id: Number(savedMessage.id),
+      id: savedMessage.id,
       content: savedMessage.content,
-      senderMemberProjectId: Number(savedMessage.sender_member_project_id),
+      senderMemberProjectId: savedMessage.sender_member_project_id,
       createdAt: savedMessage.created_at,
     });
   }
@@ -66,10 +66,10 @@ export class ChatGateway {
 
     // Emitir para ambos os usuários na sala
     this.server.to(room).emit('newPrivateMessage', {
-      id: Number(savedMessage.id),
+      id: savedMessage.id,
       content: savedMessage.content,
-      senderUserId: Number(savedMessage.sender_user_id),
-      receiverUserId: Number(savedMessage.receiver_user_id),
+      senderUserId: savedMessage.sender_user_id,
+      receiverUserId: savedMessage.receiver_user_id,
       createdAt: savedMessage.created_at,
     });
   }
