@@ -121,12 +121,12 @@ export class ChatService {
       )
       .map((m) => ({
         ...m,
-        id: Number(m.id),
-        sender_member_project_id: Number(m.sender_member_project_id),
-        receiver_member_project_id: Number(m.receiver_member_project_id),
-        id_project: Number(m.id_project),
-        sender_user_id: Number(m.sender_user_id),
-        receiver_user_id: Number(m.receiver_user_id),
+        id: m.id,
+        sender_member_project_id: m.sender_member_project_id,
+        receiver_member_project_id: m.receiver_member_project_id,
+        id_project: m.id_project,
+        sender_user_id: m.sender_user_id,
+        receiver_user_id: m.receiver_user_id,
       }));
   }
 
@@ -153,12 +153,12 @@ export class ChatService {
       )
       .map((m) => ({
         ...m,
-        id: Number(m.id),
-        sender_member_project_id: Number(m.sender_member_project_id),
+        id: m.id,
+        sender_member_project_id: m.sender_member_project_id,
       }));
   }
 
-  async getUserByMember(memberId?: number) {
+  async getUserByMember(memberId: bigint | null) {
     if (!memberId) return;
     const member = await this.prisma.member_project.findFirstOrThrow({
       where: {
@@ -196,7 +196,7 @@ export class ChatService {
           isGroup: true,
           lastMessage: lastGroupMessage?.content,
           lastMessageDate: lastGroupMessage?.created_at,
-          lastMessageIdUser: user?.id ? Number(user?.id) : null,
+          lastMessageIdUser: user?.id ?? null,
           name: project.project.name_project,
           photoUrl: null,
         };

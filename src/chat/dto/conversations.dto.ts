@@ -4,5 +4,5 @@ export class ConversationsDTO {
   photoUrl: null | string;
   lastMessage: null | string;
   lastMessageDate: null | Date;
-  lastMessageIdUser: null | number;
+  lastMessageIdUser: null | bigint;
 }
