@@ -1,5 +1,5 @@
 export class ProjectDto {
-  id: number;
+  id: bigint;
   name: string;
-  senderMemberProjectId: number;
+  senderMemberProjectId: bigint;
 }

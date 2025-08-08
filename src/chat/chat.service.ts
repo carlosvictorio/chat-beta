@@ -18,9 +18,9 @@ export class ChatService {
 
     const projects = projectByUser.map(
       (p): ProjectDto => ({
-        id: Number(p.project.id),
+        id: p.project.id,
         name: p.project.name_project,
-        senderMemberProjectId: Number(p.id),
+        senderMemberProjectId: p.id,
       }),
     );
 
@@ -71,8 +71,8 @@ export class ChatService {
     return await this.prisma.message.create({
       data: {
         content: dto.content,
-        sender_member_project_id: Number(dto.senderMemberProjectId),
-        id_project: Number(dto.projectId),
+        sender_member_project_id: dto.senderMemberProjectId,
+        id_project: dto.projectId,
       },
       select: {
         id: true,
@@ -88,8 +88,8 @@ export class ChatService {
     return await this.prisma.message.create({
       data: {
         content: dto.content,
-        sender_user_id: Number(dto.senderUserId),
-        receiver_user_id: Number(dto.receiverUserId),
+        sender_user_id: dto.senderUserId,
+        receiver_user_id: dto.receiverUserId,
       },
     });
   }
@@ -115,12 +115,12 @@ export class ChatService {
 
     return messages.map((m) => ({
       ...m,
-      id: Number(m.id),
-      sender_member_project_id: Number(m.sender_member_project_id),
-      receiver_member_project_id: Number(m.receiver_member_project_id),
-      id_project: Number(m.id_project),
-      sender_user_id: Number(m.sender_user_id),
-      receiver_user_id: Number(m.receiver_user_id),
+      id: m.id,
+      sender_member_project_id: m.sender_member_project_id,
+      receiver_member_project_id: m.receiver_member_project_id,
+      id_project: m.id_project,
+      sender_user_id: m.sender_user_id,
+      receiver_user_id: m.receiver_user_id,
     }));
   }
 
@@ -142,8 +142,8 @@ export class ChatService {
 
     return messages.map((m) => ({
       ...m,
-      id: Number(m.id),
-      sender_member_project_id: Number(m.sender_member_project_id),
+      id: m.id,
+      sender_member_project_id: m.sender_member_project_id,
     }));
   }
 }
