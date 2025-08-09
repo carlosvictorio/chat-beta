@@ -62,9 +62,6 @@ model member_project {
   scholarship_member_project Decimal @db.Decimal(38, 2)
   project                    project @relation(fields: [id_project], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_member_project")
   users                      users   @relation(fields: [id_user], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_member_user")
-
-  sentMessages     message[] @relation("SenderProjectMessages")
-  receivedMessages message[] @relation("ReceiverProjectMessages")
   
   @@index([id_project], map: "fki_fk_member_project")
   @@index([id_user], map: "fki_fk_member_user")
@@ -148,25 +145,22 @@ model message {
   content                    String
   created_at                 DateTime    @default(now())
 
-  // Agora opcionais
-  sender_member_project_id   BigInt?     
-  receiver_member_project_id BigInt?
   id_project                 BigInt?
 
   // Novos campos para mensagens privadas
-  sender_user_id             BigInt?
+  sender_user_id             BigInt
   receiver_user_id           BigInt?
 
-  sender   member_project?   @relation("SenderProjectMessages", fields: [sender_member_project_id], references: [id], onDelete: Cascade)
-  receiver member_project?   @relation("ReceiverProjectMessages", fields: [receiver_member_project_id], references: [id], onDelete: SetNull)
+  // Para identificar mensagens em grupo
   project  project?          @relation("ProjectMessages", fields: [id_project], references: [id], onDelete: Cascade)
 
   // Relations for user sender/receiver (opcional)
-  sender_user   users?       @relation("UserSentMessages", fields: [sender_user_id], references: [id], onDelete: SetNull)
+  
+  sender_user   users       @relation("UserSentMessages", fields: [sender_user_id], references: [id], onDelete: Cascade)
+  
+  // Para identificar mensagens privadas
   receiver_user users?       @relation("vvReceiverMessages", fields: [receiver_user_id], references: [id], onDelete: SetNull)
 
-  @@index([sender_member_project_id])
-  @@index([receiver_member_project_id])
   @@index([id_project])
   @@index([sender_user_id])
   @@index([receiver_user_id])
