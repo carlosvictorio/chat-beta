@@ -21,7 +21,7 @@ export class ChatService {
       (p): ProjectDto => ({
         id: p.project.id,
         name: p.project.name_project,
-        senderMemberProjectId: p.id,
+        senderUserId: p.id_user,
       }),
     );
 
@@ -72,13 +72,13 @@ export class ChatService {
     return await this.prisma.message.create({
       data: {
         content: dto.content,
-        sender_member_project_id: dto.senderMemberProjectId,
+        sender_user_id: dto.senderUserId,
         id_project: dto.projectId,
       },
       select: {
         id: true,
         content: true,
-        sender_member_project_id: true,
+        sender_user_id: true,
         created_at: true,
       },
     });
@@ -122,8 +122,6 @@ export class ChatService {
       .map((m) => ({
         ...m,
         id: m.id,
-        sender_member_project_id: m.sender_member_project_id,
-        receiver_member_project_id: m.receiver_member_project_id,
         id_project: m.id_project,
         sender_user_id: m.sender_user_id,
         receiver_user_id: m.receiver_user_id,
@@ -142,7 +140,7 @@ export class ChatService {
         id: true,
         content: true,
         created_at: true,
-        sender_member_project_id: true,
+        sender_user_id: true,
       },
     });
 
@@ -154,7 +152,7 @@ export class ChatService {
       .map((m) => ({
         ...m,
         id: m.id,
-        sender_member_project_id: m.sender_member_project_id,
+        sender_user_id: m.sender_user_id,
       }));
   }
 
@@ -188,9 +186,15 @@ export class ChatService {
         );
         const lastGroupMessage = groupMessages[groupMessages.length - 1];
 
-        const user = await this.getUserByMember(
+        /*const user = await this.getUserByMember(
           lastGroupMessage?.sender_member_project_id,
-        );
+        );*/
+
+        const user = await this.prisma.users.findFirstOrThrow({
+          where: {
+            id: lastGroupMessage?.sender_user_id,
+          },
+        });
 
         return {
           isGroup: true,
