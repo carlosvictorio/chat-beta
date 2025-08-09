@@ -14,8 +14,11 @@ export class ChatContoller {
 
   @Get('user-contacts/:id')
   async getContactsByUserId(@Param('id') id: string) {
-    //return await this.chatService.getContactsByUser(id);
+    return await this.chatService.getContactsByUser(id);
+  }
 
+  @Get('conversations/:id')
+  async getUserConversationByUser(@Param('id') id: string) {
     return await this.chatService.getUserConversations(id);
   }
 
