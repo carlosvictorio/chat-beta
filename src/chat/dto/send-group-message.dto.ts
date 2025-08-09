@@ -1,5 +1,5 @@
 export class SendGroupMessageDto {
   content: string;
-  senderMemberProjectId: bigint;
+  senderUserId: bigint;
   projectId: bigint;
 }
