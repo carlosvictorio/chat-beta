@@ -45,7 +45,7 @@ export class ChatGateway {
     this.server.to(dto.projectId.toString()).emit('newMessage', {
       id: savedMessage.id,
       content: savedMessage.content,
-      senderMemberProjectId: savedMessage.sender_member_project_id,
+      senderUserId: savedMessage.sender_user_id,
       createdAt: savedMessage.created_at,
     });
   }
