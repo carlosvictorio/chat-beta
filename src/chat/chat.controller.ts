@@ -31,15 +31,14 @@ export class ChatContoller {
       Number(user1),
       Number(user2),
     );
-    if (messages.length === 0) return 'Sem mensagens';
 
     return messages;
   }
 
   @Get('messages/group')
   async getGroupMessage(@Query('projectid') projectid: string) {
+    console.log('oia', projectid);
     const messages = await this.chatService.getGroupMessages(Number(projectid));
-    if (messages.length === 0) return 'Sem mensagens';
 
     return messages;
   }

@@ -1,6 +1,7 @@
 export class ConversationsDTO {
-  name: String;
+  name: string;
   isGroup: boolean;
+  idUserOrProject: bigint;
   photoUrl: null | string;
   lastMessage: null | string;
   lastMessageDate: null | Date;

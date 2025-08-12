@@ -1,13 +1,18 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { ProjectDto } from './dto/project.dto';
 import { SendGroupMessageDto } from './dto/send-group-message.dto';
 import { SendPrivateMessageDto } from './dto/send-private-message.dto';
 import { ConversationsDTO } from './dto/conversations.dto';
+import { ChatGateway } from './chat.gateway';
 
 @Injectable()
 export class ChatService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => ChatGateway))
+    private readonly chatGateway: ChatGateway,
+  ) {}
 
   async getProjectByUser(userId: string) {
     const idBigInt = BigInt(userId);
@@ -68,8 +73,7 @@ export class ChatService {
   }
 
   async saveGroupMessage(dto: SendGroupMessageDto) {
-    //console.log('💡 DTO recebido em saveGroupMessage:', dto);
-    return await this.prisma.message.create({
+    const create = await this.prisma.message.create({
       data: {
         content: dto.content,
         sender_user_id: dto.senderUserId,
@@ -82,6 +86,10 @@ export class ChatService {
         created_at: true,
       },
     });
+
+    await this.chatGateway.emitConversationsList(create.id);
+
+    return create;
   }
 
   async savePrivateMessage(dto: SendPrivateMessageDto) {
@@ -122,9 +130,9 @@ export class ChatService {
       .map((m) => ({
         ...m,
         id: m.id,
-        id_project: m.id_project,
-        sender_user_id: m.sender_user_id,
-        receiver_user_id: m.receiver_user_id,
+        idProject: m.id_project,
+        senderUserId: m.sender_user_id,
+        receiverUserId: m.receiver_user_id,
       }));
   }
 
@@ -152,7 +160,8 @@ export class ChatService {
       .map((m) => ({
         ...m,
         id: m.id,
-        sender_user_id: m.sender_user_id,
+        senderUserId: m.sender_user_id,
+        createdAt: m.created_at,
       }));
   }
 
@@ -192,12 +201,13 @@ export class ChatService {
 
         const user = await this.prisma.users.findFirstOrThrow({
           where: {
-            id: lastGroupMessage?.sender_user_id,
+            id: lastGroupMessage?.sender_user_id ?? undefined,
           },
         });
 
         return {
           isGroup: true,
+          idUserOrProject: project.project.id,
           lastMessage: lastGroupMessage?.content,
           lastMessageDate: lastGroupMessage?.created_at,
           lastMessageIdUser: user?.id ?? null,
@@ -217,6 +227,7 @@ export class ChatService {
 
         return {
           isGroup: false,
+          idUserOrProject: BigInt(user.id),
           lastMessage: lastPrivateMessages?.content,
           lastMessageDate: lastPrivateMessages?.created_at,
           lastMessageIdUser: lastPrivateMessages?.sender_user_id,
@@ -240,5 +251,35 @@ export class ChatService {
         : 0;
       return dateB - dateA;
     });
+  }
+
+  async getConversationByMessageGroup(messageId: bigint) {
+    const message = await this.prisma.message.findFirstOrThrow({
+      where: {
+        id: messageId,
+      },
+    });
+
+    let name: string = '';
+    let photo: string | null = null;
+    if (!!message.id_project) {
+      const project = await this.prisma.project.findFirstOrThrow({
+        where: {
+          id: message.id_project,
+        },
+      });
+
+      name = project.name_project;
+    }
+
+    return {
+      isGroup: !!message.id_project,
+      idUserOrProject: message.id_project!,
+      lastMessage: message?.content,
+      lastMessageDate: message?.created_at,
+      lastMessageIdUser: message?.sender_user_id,
+      name: name,
+      photoUrl: photo,
+    };
   }
 }

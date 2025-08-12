@@ -1,6 +1,7 @@
 import {
   ConnectedSocket,
   MessageBody,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
@@ -9,17 +10,32 @@ import { Server, Socket } from 'socket.io';
 import { SendGroupMessageDto } from './dto/send-group-message.dto';
 import { SendPrivateMessageDto } from './dto/send-private-message.dto';
 import { ChatService } from './chat.service';
+import { ConversationsDTO } from './dto/conversations.dto';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 
 @WebSocketGateway({
   cors: {
     origin: '*',
   },
 })
+@Injectable()
 export class ChatGateway {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    @Inject(forwardRef(() => ChatService))
+    private readonly chatService: ChatService,
+  ) {}
 
   @WebSocketServer()
   server: Server;
+
+  async emitConversationsList(idCreate: bigint) {
+    const conversation: ConversationsDTO =
+      await this.chatService.getConversationByMessageGroup(idCreate);
+    this.server.emit('conversationsList', {
+      status: 'success-update',
+      data: conversation,
+    });
+  }
 
   @SubscribeMessage('joinGroup')
   handleJoinGroup(
