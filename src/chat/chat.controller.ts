@@ -1,8 +1,18 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { SendGroupMessageDto } from './dto/send-group-message.dto';
 import { SendPrivateMessageDto } from './dto/send-private-message.dto';
+import { AuthGuard } from 'src/auth/auth.guard';
 
+@UseGuards(AuthGuard)
 @Controller('chat')
 export class ChatContoller {
   constructor(private readonly chatService: ChatService) {}

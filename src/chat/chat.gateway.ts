@@ -12,6 +12,7 @@ import { SendPrivateMessageDto } from './dto/send-private-message.dto';
 import { ChatService } from './chat.service';
 import { ConversationsDTO } from './dto/conversations.dto';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { AuthService } from 'src/auth/auth.service';
 
 @WebSocketGateway({
   cors: {
@@ -23,10 +24,47 @@ export class ChatGateway {
   constructor(
     @Inject(forwardRef(() => ChatService))
     private readonly chatService: ChatService,
+    private readonly authService: AuthService,
   ) {}
 
   @WebSocketServer()
   server: Server;
+
+  async handleConnection(client: Socket) {
+    try {
+      const token = client.handshake.auth?.token;
+
+      if (!token) {
+        client.disconnect(true);
+        return;
+      }
+
+      const payload = await this.authService.validateToken(token);
+      const userId = payload.id; // ou payload.id, depende do seu JWT
+
+      (client as any).userId = userId;
+
+      console.log(`✅ Usuário ${userId} conectado (socket ${client.id})`);
+
+      // 👉 Ao conectar, o usuário já entra em todos os grupos e privados
+      const projectsByUser = await this.chatService.getProjectByUser(
+        userId.toString(),
+      );
+      projectsByUser.forEach((p) => {
+        client.join(p.id.toString());
+      });
+
+      const contactsByUser = await this.chatService.getContactsByUser(
+        userId.toString(),
+      );
+      contactsByUser.forEach((c) => {
+        client.join(this.getPrivateRoomName(Number(userId), c.id));
+      });
+    } catch (e) {
+      console.error('❌ Erro na conexão do socket:', e.message);
+      client.disconnect(true);
+    }
+  }
 
   async emitConversationsList(idCreate: bigint) {
     const conversation: ConversationsDTO =
