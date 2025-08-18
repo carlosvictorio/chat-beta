@@ -87,20 +87,30 @@ export class ChatService {
       },
     });
 
-    await this.chatGateway.emitConversationsList(create.id);
+    await this.chatGateway.emitConversationsList(create.id, true);
 
     return create;
   }
 
   async savePrivateMessage(dto: SendPrivateMessageDto) {
-    //console.log('💡 DTO recebido em savePrivateMessage:', dto);
-    return await this.prisma.message.create({
+    const create = await this.prisma.message.create({
       data: {
         content: dto.content,
         sender_user_id: dto.senderUserId,
         receiver_user_id: dto.receiverUserId,
       },
+      select: {
+        id: true,
+        content: true,
+        sender_user_id: true,
+        receiver_user_id: true,
+        created_at: true,
+      },
     });
+
+    await this.chatGateway.emitConversationsList(create.id, false);
+
+    return create;
   }
 
   async getPrivateMessages(userId1: number, userId2: number) {
@@ -275,6 +285,60 @@ export class ChatService {
     return {
       isGroup: !!message.id_project,
       idUserOrProject: message.id_project!,
+      lastMessage: message?.content,
+      lastMessageDate: message?.created_at,
+      lastMessageIdUser: message?.sender_user_id,
+      name: name,
+      photoUrl: photo,
+    };
+  }
+
+  async getConversationByMessagePrivate(messageId: bigint) {
+    const message = await this.prisma.message.findFirstOrThrow({
+      where: {
+        id: messageId,
+      },
+    });
+    console.log(
+      'Logado e enviou:',
+      this.chatGateway.getUserLogged().id,
+      message.sender_user_id,
+    );
+    let name: string = '';
+    let photo: string | null = null;
+
+    const loggedUserId = this.chatGateway.getUserLogged().id;
+
+    const otherUserId =
+      loggedUserId === message.sender_user_id
+        ? message.receiver_user_id!
+        : message.sender_user_id!;
+
+    if (!!message.receiver_user_id) {
+      const senderUser = await this.prisma.users.findFirstOrThrow({
+        where: {
+          id: BigInt(message.sender_user_id),
+        },
+      });
+      const receiverUser = await this.prisma.users.findFirstOrThrow({
+        where: {
+          id: BigInt(message.receiver_user_id),
+        },
+      });
+
+      name =
+        loggedUserId === message.sender_user_id
+          ? receiverUser.name_user
+          : senderUser.name_user;
+      photo =
+        loggedUserId === message.sender_user_id
+          ? receiverUser.photo_user
+          : senderUser.photo_user;
+    }
+
+    return {
+      isGroup: false,
+      idUserOrProject: otherUserId,
       lastMessage: message?.content,
       lastMessageDate: message?.created_at,
       lastMessageIdUser: message?.sender_user_id,

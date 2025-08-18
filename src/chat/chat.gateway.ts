@@ -13,6 +13,7 @@ import { ChatService } from './chat.service';
 import { ConversationsDTO } from './dto/conversations.dto';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
+import { users } from '@prisma/client';
 
 @WebSocketGateway({
   cors: {
@@ -27,6 +28,16 @@ export class ChatGateway {
     private readonly authService: AuthService,
   ) {}
 
+  private userLogged: users;
+
+  getUserLogged() {
+    return this.userLogged;
+  }
+
+  setUserLogged(value: users) {
+    this.userLogged = value;
+  }
+
   @WebSocketServer()
   server: Server;
 
@@ -40,7 +51,8 @@ export class ChatGateway {
       }
 
       const payload = await this.authService.validateToken(token);
-      const userId = payload.id; // ou payload.id, depende do seu JWT
+      this.setUserLogged(payload.user!);
+      const userId = payload.user!.id; // ou payload.id, depende do seu JWT
 
       (client as any).userId = userId;
 
@@ -66,10 +78,12 @@ export class ChatGateway {
     }
   }
 
-  async emitConversationsList(idCreate: bigint) {
-    const conversation: ConversationsDTO =
-      await this.chatService.getConversationByMessageGroup(idCreate);
-    this.server.emit('conversationsList', {
+  async emitConversationsList(idCreate: bigint, isGroup: boolean) {
+    const conversation: ConversationsDTO = await (isGroup
+      ? this.chatService.getConversationByMessageGroup(idCreate)
+      : this.chatService.getConversationByMessagePrivate(idCreate));
+
+    this.server.emit(`conversationsList${this.getUserLogged().id}`, {
       status: 'success-update',
       data: conversation,
     });
@@ -151,7 +165,7 @@ export class ChatGateway {
       );
 
       // Enviar as conversas de volta para o cliente que solicitou
-      client.emit('conversationsList', {
+      client.emit(`conversationsList${this.getUserLogged().id}`, {
         status: 'success',
         data: conversations,
       });

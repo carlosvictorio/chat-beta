@@ -9,17 +9,28 @@ export class AuthService {
     private readonly prisma: PrismaService,
   ) {}
 
+  private user;
+
   async validateToken(token: string) {
     try {
-      const payload = this.jwtService.verify(token); // verifica o JWT
+      // aqui só decodifica sem validar expiração
+      const payload = this.jwtService.verify(token, {
+        secret: process.env.SECRET,
+        ignoreExpiration: true,
+      });
+
       const user = await this.prisma.users.findUnique({
-        where: { id: payload.id },
+        where: { email_user: payload.sub },
       });
 
       if (!user) throw new UnauthorizedException('User not found');
 
-      return user;
+      return { user, expired: false }; // retorna também o payload
     } catch (err) {
+      if (err.name === 'TokenExpiredError') {
+        // token expirado → retorna info para refresh
+        return { expired: true, payload: this.jwtService.decode(token) };
+      }
       throw new UnauthorizedException('Invalid token');
     }
   }
