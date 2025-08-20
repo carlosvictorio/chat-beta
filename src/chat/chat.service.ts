@@ -5,6 +5,7 @@ import { SendGroupMessageDto } from './dto/send-group-message.dto';
 import { SendPrivateMessageDto } from './dto/send-private-message.dto';
 import { ConversationsDTO } from './dto/conversations.dto';
 import { ChatGateway } from './chat.gateway';
+import { users } from '@prisma/client';
 
 @Injectable()
 export class ChatService {
@@ -87,9 +88,15 @@ export class ChatService {
       },
     });
 
-    await this.chatGateway.emitConversationsList(create.id, true);
+    const senderUser = await this.prisma.users.findFirstOrThrow({
+      where: {
+        id: BigInt(dto.senderUserId),
+      },
+    });
 
-    return create;
+    await this.emitConversationsList(create.id, true);
+
+    return { ...create, senderUserName: senderUser.name_user };
   }
 
   async savePrivateMessage(dto: SendPrivateMessageDto) {
@@ -108,9 +115,44 @@ export class ChatService {
       },
     });
 
-    await this.chatGateway.emitConversationsList(create.id, false);
+    const senderUser = await this.prisma.users.findFirstOrThrow({
+      where: {
+        id: BigInt(dto.senderUserId),
+      },
+    });
 
-    return create;
+    await this.emitConversationsList(create.id, false);
+
+    return { ...create, senderUserName: senderUser.name_user };
+  }
+
+  async emitConversationsList(idCreated: bigint, isGroup: boolean) {
+    const message = await this.prisma.message.findFirstOrThrow({
+      where: {
+        id: idCreated,
+      },
+    });
+
+    let valueReturn: any;
+    if (isGroup) {
+      const members = await this.prisma.member_project.findMany({
+        where: {
+          id_project: BigInt(message.id_project!),
+        },
+      });
+      const listEmitsIds = members.map((member) => member.id_user);
+      valueReturn = {
+        listEmitsIds: listEmitsIds,
+        idMessage: idCreated,
+      };
+    } else {
+      const listEmitsIds = [message.receiver_user_id, message.sender_user_id];
+      valueReturn = {
+        listEmitsIds: listEmitsIds,
+        idMessage: idCreated,
+      };
+    }
+    await this.chatGateway.emitConversationsList(valueReturn, isGroup);
   }
 
   async getPrivateMessages(userId1: number, userId2: number) {
@@ -132,18 +174,28 @@ export class ChatService {
       },
     });
 
-    return messages
-      .sort(
-        (a, b) =>
-          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-      )
-      .map((m) => ({
-        ...m,
-        id: m.id,
-        idProject: m.id_project,
-        senderUserId: m.sender_user_id,
-        receiverUserId: m.receiver_user_id,
-      }));
+    return await Promise.all(
+      messages
+        .sort(
+          (a, b) =>
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+        )
+        .map(async (m) => {
+          const senderUser = await this.prisma.users.findFirstOrThrow({
+            where: {
+              id: m.sender_user_id,
+            },
+          });
+          return {
+            ...m,
+            id: m.id,
+            idProject: m.id_project,
+            senderUserId: m.sender_user_id,
+            receiverUserId: m.receiver_user_id,
+            senderUserName: senderUser.name_user,
+          };
+        }),
+    );
   }
 
   async getGroupMessages(projectId: number) {
@@ -162,17 +214,28 @@ export class ChatService {
       },
     });
 
-    return messages
-      .sort(
-        (a, b) =>
-          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-      )
-      .map((m) => ({
-        ...m,
-        id: m.id,
-        senderUserId: m.sender_user_id,
-        createdAt: m.created_at,
-      }));
+    return await Promise.all(
+      messages
+        .sort(
+          (a, b) =>
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+        )
+        .map(async (m) => {
+          const senderUser = await this.prisma.users.findFirstOrThrow({
+            where: {
+              id: m.sender_user_id,
+            },
+          });
+
+          return {
+            ...m,
+            id: m.id,
+            senderUserId: m.sender_user_id,
+            createdAt: m.created_at,
+            senderUserName: senderUser.name_user,
+          };
+        }),
+    );
   }
 
   async getUserByMember(memberId: bigint | null) {
@@ -221,6 +284,9 @@ export class ChatService {
           lastMessage: lastGroupMessage?.content,
           lastMessageDate: lastGroupMessage?.created_at,
           lastMessageIdUser: user?.id ?? null,
+          lastMessageNameUser: lastGroupMessage?.sender_user_id
+            ? user?.name_user
+            : null,
           name: project.project.name_project,
           photoUrl: null,
         };
@@ -235,12 +301,20 @@ export class ChatService {
         );
         const lastPrivateMessages = privateMessages[privateMessages.length - 1];
 
+        const senderUser = await this.prisma.users.findFirstOrThrow({
+          where: {
+            id: lastPrivateMessages?.sender_user_id,
+          },
+        });
         return {
           isGroup: false,
           idUserOrProject: BigInt(user.id),
           lastMessage: lastPrivateMessages?.content,
           lastMessageDate: lastPrivateMessages?.created_at,
           lastMessageIdUser: lastPrivateMessages?.sender_user_id,
+          lastMessageNameUser: lastPrivateMessages?.sender_user_id
+            ? senderUser.name_user
+            : '',
           name: user.name_user,
           photoUrl: user.photo_user,
         };
@@ -281,6 +355,11 @@ export class ChatService {
 
       name = project.name_project;
     }
+    const senderUser = await this.prisma.users.findFirstOrThrow({
+      where: {
+        id: BigInt(message.sender_user_id),
+      },
+    });
 
     return {
       isGroup: !!message.id_project,
@@ -288,6 +367,7 @@ export class ChatService {
       lastMessage: message?.content,
       lastMessageDate: message?.created_at,
       lastMessageIdUser: message?.sender_user_id,
+      lastMessageNameUser: senderUser.name_user,
       name: name,
       photoUrl: photo,
     };
@@ -299,51 +379,39 @@ export class ChatService {
         id: messageId,
       },
     });
-    console.log(
-      'Logado e enviou:',
-      this.chatGateway.getUserLogged().id,
-      message.sender_user_id,
-    );
-    let name: string = '';
-    let photo: string | null = null;
 
-    const loggedUserId = this.chatGateway.getUserLogged().id;
+    const senderUser = await this.prisma.users.findFirstOrThrow({
+      where: {
+        id: BigInt(message.sender_user_id),
+      },
+    });
+    const receiverUser = await this.prisma.users.findFirstOrThrow({
+      where: {
+        id: BigInt(message.receiver_user_id!),
+      },
+    });
 
-    const otherUserId =
-      loggedUserId === message.sender_user_id
-        ? message.receiver_user_id!
-        : message.sender_user_id!;
-
-    if (!!message.receiver_user_id) {
-      const senderUser = await this.prisma.users.findFirstOrThrow({
-        where: {
-          id: BigInt(message.sender_user_id),
-        },
-      });
-      const receiverUser = await this.prisma.users.findFirstOrThrow({
-        where: {
-          id: BigInt(message.receiver_user_id),
-        },
-      });
-
-      name =
-        loggedUserId === message.sender_user_id
-          ? receiverUser.name_user
-          : senderUser.name_user;
-      photo =
-        loggedUserId === message.sender_user_id
-          ? receiverUser.photo_user
-          : senderUser.photo_user;
-    }
-
-    return {
-      isGroup: false,
-      idUserOrProject: otherUserId,
-      lastMessage: message?.content,
-      lastMessageDate: message?.created_at,
-      lastMessageIdUser: message?.sender_user_id,
-      name: name,
-      photoUrl: photo,
-    };
+    return [
+      {
+        isGroup: false,
+        idUserOrProject: receiverUser.id,
+        lastMessage: message?.content,
+        lastMessageDate: message?.created_at,
+        lastMessageIdUser: message?.sender_user_id,
+        lastMessageNameUser: senderUser.name_user,
+        name: receiverUser.name_user,
+        photoUrl: receiverUser.photo_user,
+      },
+      {
+        isGroup: false,
+        idUserOrProject: senderUser.id,
+        lastMessage: message?.content,
+        lastMessageDate: message?.created_at,
+        lastMessageIdUser: message?.sender_user_id,
+        lastMessageNameUser: senderUser.name_user,
+        name: senderUser.name_user,
+        photoUrl: senderUser.photo_user,
+      },
+    ];
   }
 }

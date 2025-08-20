@@ -78,15 +78,21 @@ export class ChatGateway {
     }
   }
 
-  async emitConversationsList(idCreate: bigint, isGroup: boolean) {
-    const conversation: ConversationsDTO = await (isGroup
-      ? this.chatService.getConversationByMessageGroup(idCreate)
-      : this.chatService.getConversationByMessagePrivate(idCreate));
+  async emitConversationsList(created: any, isGroup: boolean) {
+    const conversation: ConversationsDTO | ConversationsDTO[] = await (isGroup
+      ? this.chatService.getConversationByMessageGroup(created.idMessage)
+      : this.chatService.getConversationByMessagePrivate(created.idMessage));
 
-    this.server.emit(`conversationsList${this.getUserLogged().id}`, {
-      status: 'success-update',
-      data: conversation,
-    });
+    created.listEmitsIds.map((idEmit: bigint) =>
+      this.server.emit(`conversationsList_${idEmit}`, {
+        status: 'success-update',
+        data: isGroup
+          ? conversation
+          : (conversation as ConversationsDTO[]).find(
+              (conversation) => conversation.idUserOrProject != idEmit,
+            ),
+      }),
+    );
   }
 
   @SubscribeMessage('joinGroup')
@@ -115,6 +121,7 @@ export class ChatGateway {
       content: savedMessage.content,
       senderUserId: savedMessage.sender_user_id,
       createdAt: savedMessage.created_at,
+      senderUserName: savedMessage.senderUserName,
     });
   }
 
@@ -139,6 +146,7 @@ export class ChatGateway {
       senderUserId: savedMessage.sender_user_id,
       receiverUserId: savedMessage.receiver_user_id,
       createdAt: savedMessage.created_at,
+      senderUserName: savedMessage.senderUserName,
     });
   }
 
@@ -165,7 +173,7 @@ export class ChatGateway {
       );
 
       // Enviar as conversas de volta para o cliente que solicitou
-      client.emit(`conversationsList${this.getUserLogged().id}`, {
+      client.emit(`conversationsList_${this.getUserLogged().id}`, {
         status: 'success',
         data: conversations,
       });

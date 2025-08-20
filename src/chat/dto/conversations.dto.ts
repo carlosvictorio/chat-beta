@@ -6,4 +6,5 @@ export class ConversationsDTO {
   lastMessage: null | string;
   lastMessageDate: null | Date;
   lastMessageIdUser: null | bigint;
+  lastMessageNameUser: null | string;
 }
